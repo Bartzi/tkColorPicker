@@ -18,42 +18,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Limited StringVar
 """
+from .functions import tk
 
 
-from tkcolorpicker.functions import tk
+class MaxValueVar(tk.IntVar):
 
+    def __init__(self, *args, **kwargs):
+        self.max_value = kwargs.pop('max_value')
+        super().__init__(*args, **kwargs)
 
-class LimitVar(tk.StringVar):
-    def __init__(self, from_, to, master=None, value=None, name=None):
-        tk.StringVar.__init__(self, master, value, name)
-        try:
-            self._from = int(from_)
-            self._to = int(to)
-        except ValueError:
-            raise ValueError("from_ and to should be integers.")
-        if self._from >= self._to:
-            raise ValueError("from_ should be smaller than to.")
-        # ensure that the initial value is valid
-        val = self.get()
-        self.set(val)
+    def set(self, value):
+        value = int(value)
+        super().set(value)
 
     def get(self):
-        """
-        Convert the content to int between the limits of the variable.
-
-        If the content is not an integer between the limits, the value is
-        corrected and the corrected result is returned.
-        """
-        val = tk.StringVar.get(self)
+        """Return the value of the variable as an integer."""
+        value = self._tk.globalgetvar(self._name)
         try:
-            val = int(val)
-            if val < self._from:
-                val = self._from
-                self.set(val)
-            elif val > self._to:
-                val = self._to
-                self.set(val)
-        except ValueError:
-            val = 0
-            self.set(0)
-        return val
+            return self._tk.getint(value)
+        except (TypeError, tk.TclError):
+            return 0

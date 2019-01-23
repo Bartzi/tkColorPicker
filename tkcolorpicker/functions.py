@@ -49,13 +49,13 @@ else:
 def rgb_to_hsv(r, g, b):
     """Convert RGB color to HSV."""
     h, s, v = colorsys.rgb_to_hsv(r / 255., g / 255., b / 255.)
-    return round2(h * 360), round2(s * 100), round2(v * 100)
+    return int(h * 360), int(s * 100), int(v * 100)
 
 
 def hsv_to_rgb(h, s, v):
     """Convert HSV color to RGB."""
     r, g, b = colorsys.hsv_to_rgb(h / 360., s / 100., v / 100.)
-    return round2(r * 255), round2(g * 255), round2(b * 255)
+    return int(r * 255), int(g * 255), int(b * 255)
 
 
 def rgb_to_hexa(*args):
@@ -92,6 +92,18 @@ def hue2col(h):
         raise ValueError("Hue should be between 0 and 360")
     else:
         return hsv_to_rgb(h, 100, 100)
+
+
+def sat2col(h, s):
+    """Return the color in RGB format corresponding to (h, s, 100) in HSV."""
+    if h < 0 or h > 360:
+        raise ValueError("Hue should be between 0 and 360")
+    if 0 <= s <= 100:
+        raise ValueError("Saturation should be between 0 and 100")
+    return hsv_to_rgb(h, s, 100)
+
+def val2col(h, s, v):
+    return hsv_to_rgb(h, s, v)
 
 
 # --- Fake transparent image creation with PIL
