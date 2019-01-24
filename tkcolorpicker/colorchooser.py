@@ -4,7 +4,6 @@ Based on tkcolorpicker - Alternative to colorchooser for Tkinter.
 See: https://github.com/j4321/tkColorPicker
 """
 
-from collections import OrderedDict
 from locale import getdefaultlocale
 
 from .functions import tk, ttk, hsv_to_rgb, rgb_to_hexa, rgb_to_hsv
@@ -33,10 +32,10 @@ def _(text):
     return TR.get(text, text)
 
 
-class ColorPicker(tk.Toplevel):
+class ColorChooser(tk.Frame):
     """Color picker dialog."""
 
-    def __init__(self, parent=None, color=(255, 0, 0), title=_("Color Chooser")):
+    def __init__(self, parent, color_components, **kwargs):
         """
         Create a ColorPicker dialog.
 
@@ -46,22 +45,17 @@ class ColorPicker(tk.Toplevel):
             * alpha: alpha channel support (boolean)
             * title: dialog title
         """
-        super().__init__(parent)
+        super().__init__(parent, **kwargs)
 
-        self.title(title)
-        self.transient(self.master)
-        self.resizable(False, False)
-        self.rowconfigure(1, weight=1)
+        # self.rowconfigure(1, weight=1)
 
         style = ttk.Style(self)
         style.map("palette.TFrame", relief=[('focus', 'sunken')],
                   bordercolor=[('focus', "#4D4D4D")])
         self.configure(background=style.lookup("TFrame", "background"))
 
-        self._old_color = color
-
-        self.init_color(color)
-        self.create_gradient_views()
+        self.init_color(color_components)
+        self._old_color = hsv_to_rgb(*self.get_current_color())
 
         col_frame = ttk.Frame(self)
         col_frame.grid(row=0, rowspan=3, column=1, padx=(4, 10), pady=(10, 4))
@@ -69,9 +63,7 @@ class ColorPicker(tk.Toplevel):
         self.create_hsv_chooser(col_frame)
         self.create_rgb_chooser(col_frame)
 
-        self.wait_visibility()
-        self.lift()
-        self.grab_set()
+        self.create_gradient_views()
 
     def create_rgb_chooser(self, col_frame):
         rgb_frame = ttk.Frame(col_frame, relief="ridge", borderwidth=2)
@@ -151,6 +143,7 @@ class ColorPicker(tk.Toplevel):
             gradient_bar.grid(row=i, column=0, pady=(0, 10), sticky='n')
             gradient_bar.bind("<B1-Motion>", self._change_color, True)
             gradient_bar.bind("<ButtonRelease-1>", self._change_color, True)
+            gradient_bar.bind("<ButtonRelease-1>", lambda e: self.event_generate("<<Redraw>>"), True)
 
         preview_frame = ttk.Frame(colors, relief="groove", borderwidth=0, width=200, height=40)
         preview_frame.grid(row=len(self.color_components), column=0, pady=(0, 10), sticky='n')
@@ -162,25 +155,21 @@ class ColorPicker(tk.Toplevel):
         self.color_preview = tk.Label(preview_frame, width=12, height=2,
                                       pady=0, background=rgb_to_hexa(*hsv_to_rgb(*self.get_current_color())),
                                       padx=0, highlightthickness=0)
-        old_color_prev.bind("<ButtonPress-1>", lambda x: self.set_color(*self._old_color))
+        old_color_prev.bind("<ButtonPress-1>", lambda x: self.set_color(*self._old_color), True)
+        old_color_prev.bind("<ButtonRelease-1>", lambda e: self.event_generate("<<Redraw>>"), True)
         self.color_preview.pack(expand=True, side=tk.RIGHT)
 
-    def init_color(self, color):
-        h, s, v = rgb_to_hsv(*color)
+    def init_color(self, color_components):
+        self.color_components = color_components
 
-        self.hue = MaxValueVar(self, h, max_value=360, name='hue')
-        self.saturation = MaxValueVar(self, s, max_value=100, name='saturation')
-        self.value = MaxValueVar(self, v, max_value=100, name='value')
+        for name, component in color_components.items():
+            setattr(self, name, component)
 
-        self.color_components = OrderedDict({
-            "hue": self.hue,
-            "saturation": self.saturation,
-            "value": self.value,
-        })
+        r, g, b = hsv_to_rgb(*self.get_current_color())
 
-        self.red = MaxValueVar(self, color[0], max_value=255, name="red")
-        self.green = MaxValueVar(self, color[1], max_value=255, name="green")
-        self.blue = MaxValueVar(self, color[2], max_value=255, name="blue")
+        self.red = MaxValueVar(self, r, max_value=255, name="red")
+        self.green = MaxValueVar(self, g, max_value=255, name="green")
+        self.blue = MaxValueVar(self, b, max_value=255, name="blue")
 
     def get_current_color(self):
         return [color_component.get() for color_component in self.color_components.values()]
@@ -223,6 +212,7 @@ class ColorPicker(tk.Toplevel):
             for color, component in zip([h, s, v], self.color_components.values()):
                 component.set(color)
 
+            self.event_generate("<<Redraw>>")
             self._update_preview(r, g, b)
 
     def _update_color_rgb(self, event=None):
@@ -239,6 +229,7 @@ class ColorPicker(tk.Toplevel):
             for color, component in zip([h, s, v], self.color_components.values()):
                 component.set(color)
 
+            self.event_generate("<<Redraw>>")
             self._update_preview(r, g, b)
 
     def ok(self):
@@ -248,22 +239,3 @@ class ColorPicker(tk.Toplevel):
             rgb += (self.alpha.get(),)
         self.color = rgb, hsv, hexa
         self.destroy()
-
-
-def askcolor(color="red", parent=None, title=_("Color Chooser"), alpha=False):
-    """
-    Open a ColorPicker dialog and return the chosen color.
-
-    The selected color is retunred in HSV format.
-    (None, None) is returned if the color selection is cancelled.
-
-    Arguments:
-        * color: initially selected color (RGB(A), hexa or tkinter color name)
-        * parent: parent window
-        * title: dialog title
-        * alpha: alpha channel suppport
-    """
-    col = ColorPicker(parent, color, title)
-    col.wait_window(col)
-    res = col.get_current_color()
-    return res

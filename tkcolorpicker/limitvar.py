@@ -29,6 +29,8 @@ class MaxValueVar(tk.IntVar):
 
     def set(self, value):
         value = int(value)
+        if value > self.max_value:
+            value = self.max_value
         super().set(value)
 
     def get(self):
