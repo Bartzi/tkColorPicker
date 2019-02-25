@@ -10,7 +10,7 @@ from libs.tkColorPicker.tkcolorpicker.tolerance_chooser import ToleranceChooser
 
 class ColorPicker(tk.Toplevel):
 
-    def __init__(self, parent=None, color=(255, 0, 0), title=_("Color Chooser")):
+    def __init__(self, parent=None, color=(255, 0, 0), tolerances=(0, 0, 0), title=_("Color Chooser")):
         super().__init__(parent)
 
         self.title(title)
@@ -21,7 +21,7 @@ class ColorPicker(tk.Toplevel):
 
         self.create_color_chooser(color)
 
-        tolerance_frame = self.creat_tolerance_chooser()
+        tolerance_frame = self.creat_tolerance_chooser(tolerances)
         self.create_buttons(tolerance_frame)
 
         self.create_included_colors_viewer()
@@ -56,12 +56,12 @@ class ColorPicker(tk.Toplevel):
         for text in ["Ok", "Cancel"]:
             tk.Button(button_frame, text=_(text), command=self.ok).pack(side='right', padx=10, ipadx=20, ipady=20)
 
-    def creat_tolerance_chooser(self):
+    def creat_tolerance_chooser(self, tolerances):
         tolerance_frame = tk.Frame(self, padx=15)
         tolerance_frame.grid(row=0, column=1, stick='n')
-        self.hue_tolerance = MaxValueVar(tolerance_frame, 0, max_value=100, name='hue_tolerance')
-        self.saturation_tolerance = MaxValueVar(tolerance_frame, 0, max_value=100, name='saturation_tolerance')
-        self.value_tolerance = MaxValueVar(tolerance_frame, 0, max_value=100, name='value_tolerance')
+        self.hue_tolerance = MaxValueVar(tolerance_frame, tolerances[0], max_value=100, name='hue_tolerance')
+        self.saturation_tolerance = MaxValueVar(tolerance_frame, tolerances[1], max_value=100, name='saturation_tolerance')
+        self.value_tolerance = MaxValueVar(tolerance_frame, tolerances[2], max_value=100, name='value_tolerance')
         self.tolerance_components = OrderedDict({
             "hue": self.hue_tolerance,
             "saturation": self.saturation_tolerance,
@@ -125,7 +125,7 @@ class ColorPicker(tk.Toplevel):
         self.destroy()
 
 
-def askcolor(color=(255, 0, 0), parent=None, title=_("Color Chooser")):
+def askcolor(color=(255, 0, 0), tolerances=(0, 0, 0), parent=None, title=_("Color Chooser")):
     """
     Open a ColorPicker dialog and return the chosen color.
 
@@ -138,8 +138,7 @@ def askcolor(color=(255, 0, 0), parent=None, title=_("Color Chooser")):
         * title: dialog title
         * alpha: alpha channel suppport
     """
-    picker = ColorPicker(parent, color, title)
+    picker = ColorPicker(parent, color, tolerances, title)
     picker.wait_window(picker)
     res = picker.get_result()
     return res
-
