@@ -51,8 +51,8 @@ class ColorSquare(tk.Canvas):
         def get_min_max_value(v, tolerance):
             max_value = v.max_value
             v = v.get()
-            min = v - max_value * tolerance / 100 / 2
-            max = v + max_value * tolerance / 100 / 2
+            min = v - max_value * tolerance / 100
+            max = v + max_value * tolerance / 100
             return min, max
 
         h, s, v = self.color_components.values()
