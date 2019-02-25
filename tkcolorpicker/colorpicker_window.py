@@ -112,6 +112,10 @@ class ColorPicker(tk.Toplevel):
             destroy the dialog in order to return to calling code
         """
         self.destroy()
+        for var in [self.hue, self.saturation, self.value]:
+            tracers = var.trace_info()
+            for trace_type, callback_name in tracers:
+                var.trace_remove(trace_type, callback_name)
 
     def cancel(self):
         """
