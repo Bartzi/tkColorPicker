@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from libs.tkColorPicker.tkcolorpicker.colorchooser import _, ColorChooser
 from libs.tkColorPicker.tkcolorpicker.colorsquare import ColorSquare
-from libs.tkColorPicker.tkcolorpicker.functions import rgb_to_hsv
+from libs.tkColorPicker.tkcolorpicker.functions import rgb_to_hsv, hsv_to_rgb
 from libs.tkColorPicker.tkcolorpicker.limitvar import MaxValueVar
 from libs.tkColorPicker.tkcolorpicker.tolerance_chooser import ToleranceChooser
 
@@ -18,6 +18,7 @@ class ColorPicker(tk.Toplevel):
         self.resizable(False, False)
 
         self.color = color
+        self.tolerances = tolerances
 
         self.create_color_chooser(color)
 
@@ -25,10 +26,9 @@ class ColorPicker(tk.Toplevel):
         self.create_buttons(tolerance_frame)
 
         self.create_included_colors_viewer()
+        self.hide()
 
-        self.wait_visibility()
-        self.lift()
-        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self.hide)
 
     def create_included_colors_viewer(self):
         included_colors_area = tk.LabelFrame(self, text=_("Included Colors"))
@@ -53,12 +53,13 @@ class ColorPicker(tk.Toplevel):
     def create_buttons(self, tolerance_frame):
         button_frame = tk.Frame(tolerance_frame)
         button_frame.pack(side='bottom', pady=20)
-        for text in ["Ok", "Cancel"]:
-            tk.Button(button_frame, text=_(text), command=self.ok).pack(side='right', padx=10, ipadx=20, ipady=20)
+        tk.Button(button_frame, text=_("Ok"), command=self.ok).pack(side='right', padx=10, ipadx=20, ipady=20)
+        tk.Button(button_frame, text=_("Reset"), command=self.reset).pack(side='right', padx=10, ipadx=20, ipady=20)
 
     def creat_tolerance_chooser(self, tolerances):
         tolerance_frame = tk.Frame(self, padx=15)
         tolerance_frame.grid(row=0, column=1, stick='n')
+
         self.hue_tolerance = MaxValueVar(tolerance_frame, tolerances[0], max_value=100, name='hue_tolerance')
         self.saturation_tolerance = MaxValueVar(tolerance_frame, tolerances[1], max_value=100, name='saturation_tolerance')
         self.value_tolerance = MaxValueVar(tolerance_frame, tolerances[2], max_value=100, name='value_tolerance')
@@ -67,10 +68,11 @@ class ColorPicker(tk.Toplevel):
             "saturation": self.saturation_tolerance,
             "value": self.value_tolerance,
         })
+
         tolerance_label = tk.LabelFrame(tolerance_frame, text=_("Tolerance in %"))
         tolerance_label.pack()
+
         self.tolerance_chooser = ToleranceChooser(tolerance_label, self.tolerance_components)
-        # self.tolerance_chooser.bind('<Button-1>', test)
         self.tolerance_chooser.grid(row=1, column=1)
         return tolerance_frame
 
@@ -92,11 +94,15 @@ class ColorPicker(tk.Toplevel):
         self.color_chooser = ColorChooser(color_label, self.color_components)
         self.color_chooser.grid(row=0, column=0)
 
-    def get_result(self):
+    def get_config(self):
         return {
             "color": [color_component.get() for color_component in self.color_components.values()],
             "tolerances": [tolerance_component.get() for tolerance_component in self.tolerance_components.values()]
         }
+
+    def reinit(self):
+        self.color = hsv_to_rgb(self.hue.get(), self.saturation.get(), self.value.get())
+        self.tolerances = [tolerance_component.get() for tolerance_component in self.tolerance_components.values()]
 
     def reset(self):
         h, s, v = rgb_to_hsv(*self.color)
@@ -104,41 +110,18 @@ class ColorPicker(tk.Toplevel):
         self.saturation.set(s)
         self.value.set(v)
 
-        for tolerance_component in self.tolerance_components.values():
-            tolerance_component.set(0)
+        for tolerance_component, tolerance_value in zip(self.tolerance_components.values(), self.tolerances):
+            tolerance_component.set(tolerance_value)
+
+        self.color_chooser.set_color(*self.color)
+        self.event_generate("<<Redraw>>")
+
+    def show(self):
+        self.update()
+        self.deiconify()
+
+    def hide(self):
+        self.withdraw()
 
     def ok(self):
-        """
-            destroy the dialog in order to return to calling code
-        """
-        self.destroy()
-        for var in [self.hue, self.saturation, self.value]:
-            tracers = var.trace_info()
-            for trace_type, callback_name in tracers:
-                var.trace_remove(trace_type, callback_name)
-
-    def cancel(self):
-        """
-            restore startup color and tolerances and set it as color that will be read by code that called this dialog
-        """
-        self.reset()
-        self.destroy()
-
-
-def askcolor(color=(255, 0, 0), tolerances=(0, 0, 0), parent=None, title=_("Color Chooser")):
-    """
-    Open a ColorPicker dialog and return the chosen color.
-
-    The selected color is retunred in HSV format.
-    (None, None) is returned if the color selection is cancelled.
-
-    Arguments:
-        * color: initially selected color (RGB(A), hexa or tkinter color name)
-        * parent: parent window
-        * title: dialog title
-        * alpha: alpha channel suppport
-    """
-    picker = ColorPicker(parent, color, tolerances, title)
-    picker.wait_window(picker)
-    res = picker.get_result()
-    return res
+        self.hide()
